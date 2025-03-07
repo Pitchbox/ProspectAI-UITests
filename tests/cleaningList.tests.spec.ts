@@ -6,8 +6,6 @@ import { ContactsStep } from '../src/steps/contactsStep';
 import { emailCleaningListTestData } from '../src/helpers/TestConstants';
 import { ProspectListsStep } from '../src/steps/prospectListsStep';
 
-test.setTimeout(60000);
-
 test.beforeEach(async ({ page }) => {
     const loginStep = new LoginStep(page);
     const generalStep = new GeneralStep(page);

@@ -6,8 +6,6 @@ import { ProspectListsStep } from '../src/steps/prospectListsStep';
 import { ContactsStep } from '../src/steps/contactsStep';
 import { logInData } from '../src/helpers/TestConstants';
 
-test.setTimeout(60000);
-
 test.describe.serial('When the user bulk search domains, all available information of corresponding company is displayed', () => {
     test.beforeEach(async ({ page }) => {
         const loginStep = new LoginStep(page);

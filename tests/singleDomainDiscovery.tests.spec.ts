@@ -7,8 +7,6 @@ import { ProspectListsStep } from '../src/steps/prospectListsStep';
 import { ContactsStep } from '../src/steps/contactsStep';
 import { contactsTestData } from '../src/helpers/TestConstants';
 
-test.setTimeout(60000);
-
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(60000);
 

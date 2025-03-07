@@ -4,9 +4,9 @@ import { GeneralStep } from '../src/steps/generalStep';
 import { logInData, outreachTestData } from '../src/helpers/TestConstants';
 import { OutreacheStep } from '../src/steps/outreachStep';
 
-test.setTimeout(150000);
-
 test.beforeAll(async ({ browser }) => {
+    test.setTimeout(100000);
+
     const context = await browser.newContext();
     const page = await context.newPage();
     const generalStep = new GeneralStep(page);

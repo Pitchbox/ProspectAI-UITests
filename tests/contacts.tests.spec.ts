@@ -6,9 +6,8 @@ import { contactsTestData } from '../src/helpers/TestConstants';
 import { ProspectListsStep } from '../src/steps/prospectListsStep';
 import { EmailCleaningListStep } from '../src/steps/emailCleaningListStep';
 
-test.setTimeout(80000);
-
 test.describe.serial("The user can add companies/contacts and assign to companies/contacts", () => {
+    test.setTimeout(60000);
 
     test.beforeEach(async ({ page }) => {
         const loginStep = new LoginStep(page);

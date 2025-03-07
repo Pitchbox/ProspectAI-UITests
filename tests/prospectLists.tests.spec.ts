@@ -5,11 +5,11 @@ import { ProspectListsStep } from '../src/steps/prospectListsStep';
 import { ContactsStep } from '../src/steps/contactsStep';
 import { testDataListsPage } from '../src/helpers/TestConstants';
 
-test.setTimeout(60000);
-
 test.describe.serial("The user can perform the following actions with lists", () => {
 
     test.beforeEach(async ({ page }) => {
+        test.setTimeout(60000);
+
         const loginStep = new LoginStep(page);
         const generalStep = new GeneralStep(page);
 

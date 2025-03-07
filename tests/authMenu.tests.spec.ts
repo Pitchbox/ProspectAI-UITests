@@ -4,9 +4,8 @@ import { GeneralStep } from '../src/steps/generalStep';
 import { AuthMenuStep } from '../src/steps/authMenuStep';
 import { logInData, profileTestData, integrationTestData, shareWithFriendsTestData } from '../src/helpers/TestConstants';
 
-test.setTimeout(60000);
-
 test.beforeEach(async ({ page }) => {
+    test.setTimeout(60000);
     const loginStep = new LoginStep(page);
     const generalStep = new GeneralStep(page);
 
