@@ -5,20 +5,20 @@ import { AuthMenuStep } from '../src/steps/authMenuStep';
 import { SettingsStep } from '../src/steps/settingsStep';
 import { logInData, resetPasswordTestData, yearTeamTestData, testDataSubscriptionPlans } from '../src/helpers/TestConstants';
 import { VerifyEmailSearchStep } from '../src/steps/verifyEmailSearchStep';
+import { TemporaryInboxStep } from '../src/steps/temporaryInboxStep';
 
-test.use({ trace: "on" });
-
-test.setTimeout(100000);
 let confirmationLink: string;
+const emailFilePath = 'temporaryEmail.txt';
+let inbox: string;
 
-//test.afterAll('Clean Up', async ({ browser }) => {
-//  const context = await browser.newContext();
-//const page = await context.newPage();
-//const settingsStep = new SettingsStep(page);
+test.afterAll('Clean Up', async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const settingsStep = new SettingsStep(page);
 
-////const inbox = (global as any).inbox;
-//await settingsStep.clearInbox(yearTeamTestData.inboxId);
-//});
+    await settingsStep.clearInbox(yearTeamTestData.inboxId);
+    browser.close();
+});
 
 test('When the user opens Settings page, the following items are shown', async ({ page }) => {
     const generalStep = new GeneralStep(page);
@@ -46,6 +46,7 @@ test('When the user opens Settings page, the following items are shown', async (
 
 test.describe('When the user resetes password on Password Reset page, the password is updated', () => {
     test('When the user resetes password with valid data on Password Reset page, the password is updated', async ({ page }) => {
+        test.setTimeout(test.info().timeout + 60000);
         const generalStep = new GeneralStep(page);
         const loginStep = new LoginStep(page);
         let oldPassword = resetPasswordTestData.password;
@@ -174,14 +175,29 @@ test.describe('When the user resetes password on Password Reset page, the passwo
 });
 
 test.describe.serial('When the team enjoys prospecting together the team has the following opportunity', () => {
+    test.beforeAll('Create temporary Email Inbox', async ({ browser }) => {
+        const context = await browser.newContext();
+        const page = await context.newPage();
+        const temporaryInboxStep = new TemporaryInboxStep(page);
+
+        inbox = await temporaryInboxStep.getTemporaryEmail(emailFilePath);
+        browser.close();
+    });
+
+    test.afterAll('Clean Up', async ({ browser }) => {
+        const context = await browser.newContext();
+        const page = await context.newPage();
+        const temporaryInboxStep = new TemporaryInboxStep(page);
+
+        await temporaryInboxStep.clearInbox(inbox);
+        browser.close();
+    });
 
     test('When the user deletes not accepted team member the team memeber is removed', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const loginStep = new LoginStep(page);
         const settingsStep = new SettingsStep(page);
 
-        //const inbox = await settingsStep.createEmailInbox();
-        //(global as any).inbox = inbox;
         await test.step('Open the page and log in', async () => {
             await generalStep.open();
             await loginStep.login(logInData.username, logInData.password);
@@ -210,14 +226,6 @@ test.describe.serial('When the team enjoys prospecting together the team has the
 
             await settingsStep.expectTeamMemberIsNotShown(yearTeamTestData.newTeamMember);
         });
-
-        //await test.step('Clear inbox', async () => {
-        //    const emails = await settingsStep.getAllTestInboxEmails(yearTeamTestData.inboxId);
-        //    console.log(`emails`, emails);
-        //    if (emails.length > 0) {
-        //        await settingsStep.clearInbox(yearTeamTestData.inboxId);
-        //    }
-        //});
     });
 
     test('When the user invites other team members on Your Team page, the team members are added to the team', async ({ page }) => {

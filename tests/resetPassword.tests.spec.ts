@@ -2,7 +2,6 @@ import { test } from '@playwright/test';
 import { ResetPasswordStep } from '../src/steps/resetPasswordStep';
 import { GeneralStep } from '../src/steps/generalStep';
 
-
 test('Reset password', async ({ page }) => {
     const generalStep = new GeneralStep(page);
     const resetPasswordStep = new ResetPasswordStep(page);
