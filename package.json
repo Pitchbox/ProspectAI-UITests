@@ -1,0 +1,26 @@
+{
+  "name": "systemtestsprospectts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "ts-node test.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "@types/node-fetch": "^2.6.12",
+    "prettier": "^3.5.1"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.64.1",
+    "csv-parser": "^3.2.0",
+    "mailslurp": "^0.0.1-security",
+    "mailslurp-client": "^15.21.0",
+    "node-fetch": "^3.3.2",
+    "playwright": "^1.50.1"
+  }
+}
