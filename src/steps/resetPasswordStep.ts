@@ -1,5 +1,5 @@
 import { Page, expect } from '@playwright/test';
-import { ResetPasswordPage } from '../pages/resetPasswordPage.ts';
+import { ResetPasswordPage } from '../pages/resetPasswordPage';
 
 export class ResetPasswordStep {
     readonly page: Page;

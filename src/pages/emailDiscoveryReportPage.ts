@@ -3,10 +3,6 @@ import { Page, Locator } from "@playwright/test";
 export class EmailDiscoveryReportPage {
     readonly page: Page;
     readonly saveCompanyButton: Locator;
-    readonly titleOfWindows: Locator;
-    readonly addNewListButton: Locator;
-    readonly saveListButton: Locator;
-    readonly selectList: Locator;
     readonly deleteList: Locator;
     readonly dropDownContent: Locator;
     readonly addToListButton: Locator;

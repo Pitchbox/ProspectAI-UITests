@@ -2,86 +2,25 @@ import { Page, expect } from '@playwright/test';
 import { SettingsPage } from '../pages/settingsPage';
 import { GeneralStep } from './generalStep';
 import { yearTeamTestData } from '../helpers/TestConstants';
-import { MailSlurp } from 'mailslurp-client';
 
 export class SettingsStep {
     readonly page: Page;
     readonly pageLocators: SettingsPage;
-    readonly mailslurp: MailSlurp;
     readonly generalStep: GeneralStep;
 
     constructor(page: Page) {
         this.page = page;
         this.pageLocators = new SettingsPage(page);
         this.generalStep = new GeneralStep(page);
-        this.mailslurp = new MailSlurp({ apiKey: yearTeamTestData.apiKeyMailSlurp });
     }
 
     //#region 🔹 Navigation
-    async gotoConfirmationLink(inboxId: string, text: string) {
-        const cleanLink = await this.getConfirmationLink(inboxId, text);
-        if (cleanLink) {
-            await this.page.goto(cleanLink);
-        }
-        else {
-            throw new Error("The link not found!");
-        }
-    }
-
     async gotoPrivacyPolicy() {
         await this.pageLocators.privacyPolicy.click();
     }
     //#endregion
 
     //#region 🔹 Actions
-    async getConfirmationLink(inboxId: string, text: string) {
-        const email = await this.getEmailWithWait(inboxId);
-        expect(email.subject).toContain(text);
-        const regex = /https?:\/\/[^\s<>"]+/g;
-        const match = email.body ? email.body.match(regex) : [];
-        let cleanLink: string = "";
-
-        if (match) {
-            const confirmationLink = match.find(link => link.includes("/Invite/")) || match[0];
-            cleanLink = confirmationLink ? confirmationLink.replace(/["<>]/g, "") : "";
-        }
-        return cleanLink;
-    }
-
-    async createEmailInbox() {
-        return await this.mailslurp.createInbox();
-    }
-
-    async getEmailWithWait(inboxId: string) {
-        return await this.mailslurp.waitForLatestEmail(inboxId, 100000, false);
-    }
-
-    async getEmails(emailId: string) {
-        return await this.mailslurp.getEmails(emailId);
-    }
-
-    async deleteInbox(inboxId: string) {
-        await this.mailslurp.deleteInbox(inboxId);
-    }
-
-    async getAllInboxes() {
-        const inboxes = await this.mailslurp.getAllInboxes();
-        return inboxes;
-    }
-
-    async clearInbox(inboxId: string) {
-        await this.mailslurp.emptyInbox(inboxId);
-    }
-
-    async getAllTestInboxEmails(inboxId: string) {
-        return await this.mailslurp.getEmails(inboxId);
-    }
-
-    async getEmailByIndex(inboxId: string) {
-        const email = await this.mailslurp.waitForNthEmail(inboxId, 0, 60000 * 2, false);
-        return email;
-    }
-
     async getRespons(nameButton: string) {
         const [response] = await Promise.all([
             this.page.waitForResponse((resp) => resp.url().includes("/web/user-team/invite/confirmation") && resp.status() === 200),

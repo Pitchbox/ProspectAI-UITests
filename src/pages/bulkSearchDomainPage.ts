@@ -7,7 +7,6 @@ export class BulkSearchDomainPage {
     readonly previousPage: Locator;
     readonly lastPage: Locator;
     readonly firstPage: Locator;
-    readonly selectAllContacts: Locator;
     readonly selectContactCheckbox: Locator;
     readonly saveContactsButton: Locator;
     readonly saveItemsModalButton: Locator;

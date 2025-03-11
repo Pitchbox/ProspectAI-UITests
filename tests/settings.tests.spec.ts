@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { LoginStep } from '../src/steps/loginStep';
 import { GeneralStep } from '../src/steps/generalStep';
 import { AuthMenuStep } from '../src/steps/authMenuStep';
@@ -6,19 +6,8 @@ import { SettingsStep } from '../src/steps/settingsStep';
 import { logInData, resetPasswordTestData, yearTeamTestData, testDataSubscriptionPlans } from '../src/helpers/TestConstants';
 import { VerifyEmailSearchStep } from '../src/steps/verifyEmailSearchStep';
 import { TemporaryInboxStep } from '../src/steps/temporaryInboxStep';
-
-let confirmationLink: string;
-const emailFilePath = 'temporaryEmail.txt';
-let inbox: string;
-
-test.afterAll('Clean Up', async ({ browser }) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    const settingsStep = new SettingsStep(page);
-
-    await settingsStep.clearInbox(yearTeamTestData.inboxId);
-    browser.close();
-});
+import { MailTmResponse } from '../src/models/mailTmResponseModel';
+import { time } from 'console';
 
 test('When the user opens Settings page, the following items are shown', async ({ page }) => {
     const generalStep = new GeneralStep(page);
@@ -174,444 +163,511 @@ test.describe('When the user resetes password on Password Reset page, the passwo
     });
 });
 
-test.describe.serial('When the team enjoys prospecting together the team has the following opportunity', () => {
-    test.beforeAll('Create temporary Email Inbox', async ({ browser }) => {
-        const context = await browser.newContext();
-        const page = await context.newPage();
-        const temporaryInboxStep = new TemporaryInboxStep(page);
+test.describe('The team enjoys prospecting together', () => {
+    test.describe.serial('1. When the team enjoys prospecting together the team has the following opportunity', () => {
+        test.setTimeout(80000);
+        let confirmationLink: string;
+        const emailFilePath = '/temporaryEmail.txt';
+        const tokenFilePath = '/temporaryToken.txt';
+        let inbox: MailTmResponse;
+        let token: string;
 
-        inbox = await temporaryInboxStep.getTemporaryEmail(emailFilePath);
-        browser.close();
-    });
+        test('Create temporary Email Inbox', async ({ page }) => {
+            const temporaryInboxStep = new TemporaryInboxStep(page);
 
-    test.afterAll('Clean Up', async ({ browser }) => {
-        const context = await browser.newContext();
-        const page = await context.newPage();
-        const temporaryInboxStep = new TemporaryInboxStep(page);
+            await test.step('Create temporary Email Inbox', async () => {
+                inbox = await temporaryInboxStep.getTemporaryEmail(emailFilePath, tokenFilePath);
+                expect(inbox).toBeDefined();
+                console.log(`Temporary email: ${inbox.address}`);
+            });
 
-        await temporaryInboxStep.clearInbox(inbox);
-        browser.close();
-    });
+            await test.step('Create temporary Token', async () => {
+                token = await temporaryInboxStep.getTemporaryToken(emailFilePath, tokenFilePath);
+                expect(token).toBeDefined();
+                console.log(`Temporary token: ${token}`);
+            });
 
-    test('When the user deletes not accepted team member the team memeber is removed', async ({ page }) => {
-        const generalStep = new GeneralStep(page);
-        const loginStep = new LoginStep(page);
-        const settingsStep = new SettingsStep(page);
+            await test.step('Clear temporary Email Inbox', async () => {
+                expect(token).toBeDefined();
+                await temporaryInboxStep.clearInbox(token);
+            });
 
-        await test.step('Open the page and log in', async () => {
-            await generalStep.open();
-            await loginStep.login(logInData.username, logInData.password);
-            await generalStep.expectPageTitleIs("Dashboard");
         });
 
-        await test.step('Year Team page is opened', async () => {
-            await generalStep.openAuthMenu();
-            await generalStep.expectAuthMenuItemsArePresented(['Settings']);
-            await generalStep.clickOnSubAuthMenuButton('Settings', 'Team');
-            await generalStep.expectPageTitleIs("Your Team");
-            await settingsStep.expectYearTeamContentIsVisible();
-            await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
+        test('When the user deletes not accepted team member the team memeber is removed', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const loginStep = new LoginStep(page);
+            const settingsStep = new SettingsStep(page);
+
+            await test.step('Open the page and log in', async () => {
+                await generalStep.open();
+                await loginStep.login(logInData.username, logInData.password);
+                await generalStep.expectPageTitleIs("Dashboard");
+            });
+
+            await test.step('Year Team page is opened', async () => {
+                await generalStep.openAuthMenu();
+                await generalStep.expectAuthMenuItemsArePresented(['Settings']);
+                await generalStep.clickOnSubAuthMenuButton('Settings', 'Team');
+                await generalStep.expectPageTitleIs("Your Team");
+                await settingsStep.expectYearTeamContentIsVisible();
+            });
+
+            await test.step('Delete team members', async () => {
+                if (inbox) {
+                    const teamMember = await settingsStep.getTeamMember(inbox.address);
+                    if ((teamMember) && (await teamMember.count()) > 0) {
+                        teamMember.hover();
+                        await generalStep.clickOnButton('Delete');
+                        await generalStep.expectModalIsShown("Are you sure you want to delete this user?");
+                        await generalStep.clickOnButton('Delete');
+                        await generalStep.expectPopUpNotificationIs("User has been deleted");
+                        await generalStep.closePopUpNotification();
+                    }
+                    await settingsStep.expectTeamMemberIsNotShown(inbox.address);
+                }
+            });
         });
 
-        await test.step('Delete team members', async () => {
-            const teamMember = await settingsStep.getTeamMember(yearTeamTestData.newTeamMember);
-            if ((teamMember) && (await teamMember.count()) > 0) {
-                teamMember.hover();
-                await generalStep.clickOnButton('Delete');
-                await generalStep.expectModalIsShown("Are you sure you want to delete this user?");
-                await generalStep.clickOnButton('Delete');
-                await generalStep.expectPopUpNotificationIs("User has been deleted");
+        test('When the user invites other team members on Your Team page, the team members are added to the team', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const settingsStep = new SettingsStep(page);
+            const loginStep = new LoginStep(page);
+            const temporaryInboxStep = new TemporaryInboxStep(page);
+
+            await test.step('Navigate to the application', async () => {
+                await generalStep.open();
+                await loginStep.login(logInData.username, logInData.password);
+                await generalStep.expectPageTitleIs("Dashboard");
+            });
+
+            await test.step('Year Team page is opened', async () => {
+                await generalStep.openAuthMenu();
+                await generalStep.expectAuthMenuItemsArePresented(['Settings']);
+                await generalStep.clickOnSubAuthMenuButton('Settings', 'Team');
+                await generalStep.expectPageTitleIs("Your Team");
+                await settingsStep.expectYearTeamContentIsVisible();
+                await generalStep.expectButtonIsVisible('Add User');
+            });
+
+            await test.step('When the user invites a new team member on Year Team page', async () => {
+                await generalStep.clickOnButton('Add User');
+                await generalStep.expectModalIsShown("Add User");
+                await generalStep.fillInTheInput('Email', inbox.address);
+                await generalStep.clickOnButton('Save');
+            });
+
+            await test.step('The new team member is added to the team', async () => {
+                await generalStep.expectPopUpNotificationIs("Invitation sent");
                 await generalStep.closePopUpNotification();
-            }
-
-            await settingsStep.expectTeamMemberIsNotShown(yearTeamTestData.newTeamMember);
-        });
-    });
-
-    test('When the user invites other team members on Your Team page, the team members are added to the team', async ({ page }) => {
-        const generalStep = new GeneralStep(page);
-        const settingsStep = new SettingsStep(page);
-        const loginStep = new LoginStep(page);
-
-        await test.step('Navigate to the application', async () => {
-            await generalStep.open();
-            await loginStep.login(logInData.username, logInData.password);
-            await generalStep.expectPageTitleIs("Dashboard");
+                await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers.concat(inbox.address));
+            });
         });
 
-        await test.step('Year Team page is opened', async () => {
-            await generalStep.openAuthMenu();
-            await generalStep.expectAuthMenuItemsArePresented(['Settings']);
-            await generalStep.clickOnSubAuthMenuButton('Settings', 'Team');
-            await generalStep.expectPageTitleIs("Your Team");
-            await settingsStep.expectYearTeamContentIsVisible();
-            await generalStep.expectButtonIsVisible('Add User');
+        test('When a user resends the invite, the invitation is sent again.', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const loginStep = new LoginStep(page);
+            const settingsStep = new SettingsStep(page);
+            const temporaryInboxStep = new TemporaryInboxStep(page);
+
+            console.log(`Inbox: ${inbox}`);
+            console.log(`Token: ${token}`);
+
+            await test.step('Open the page and log in', async () => {
+                await generalStep.open();
+                await loginStep.login(logInData.username, logInData.password);
+                await generalStep.expectPageTitleIs("Dashboard");
+            });
+
+            await test.step('Year Team page is opened', async () => {
+                await generalStep.openAuthMenu();
+                await generalStep.expectAuthMenuItemsArePresented(['Settings']);
+                await generalStep.clickOnSubAuthMenuButton('Settings', 'Team');
+                await generalStep.expectPageTitleIs("Your Team");
+                await settingsStep.expectYearTeamContentIsVisible();
+            });
+
+            await test.step('When the user clicks on Resend invite button', async () => {
+                if (inbox) {
+                    const teamMember = await settingsStep.getTeamMember(inbox.address);
+                    if ((teamMember) && (await teamMember.count()) > 0) {
+                        teamMember.hover();
+                        await generalStep.clickOnButton('Resend Invite');
+                    }
+                }
+            });
+
+            await test.step('The invite is sent again', async () => {
+                await generalStep.expectPopUpNotificationIs("Invitation sent");
+                await generalStep.closePopUpNotification();
+                await temporaryInboxStep.expectUnseenMessagesInInbox(token);
+            });
         });
 
-        await test.step('When the user invites a new team member on Year Team page', async () => {
-            await generalStep.clickOnButton('Add User');
-            await generalStep.expectModalIsShown("Add User");
-            await generalStep.fillInTheInput('Email', yearTeamTestData.newTeamMember);
-            await generalStep.clickOnButton('Save');
+        test('When the user accepts invite a new team member on Your Team page, the new team member logs in to ProspectAi', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const settingsStep = new SettingsStep(page);
+            const temporaryInboxStep = new TemporaryInboxStep(page);
+            expect(inbox).toBeDefined();
+            expect(token).toBeDefined();
+            console.log(`1Temporary token: ${token}`);
+            console.log(`1Temporary email: ${inbox.address}`);
+
+            await test.step('When the user opens corresponding email and goes to the confirmation link', async () => {
+                await temporaryInboxStep.gotoConfirmationLink(token, "Join Prospect AI - Accept Your Invitation Now");
+                confirmationLink = await temporaryInboxStep.getConfirmationLink(token, "Join Prospect AI - Accept Your Invitation Now");
+                console.log(`Confirmation link: ${confirmationLink}`);
+            });
+
+            await test.step('Then the invitation page is opened', async () => {
+                await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/team/members/invitation/**");
+                await generalStep.expectPageTitleIs("Congratulations!");
+                await generalStep.expectTheButtonIsDisabled('Complete Registration');
+            });
+
+            await test.step('When the user fills in the password and clicks on the "Complete Registration" button', async () => {
+                await generalStep.fillInTheInput("Password", logInData.password);
+                await generalStep.fillInTheInput("Confirm Password", logInData.password);
+                await generalStep.clickOnButton('Complete Registration');
+            });
+
+            await test.step('The Sign in page is opened', async () => {
+                await generalStep.expectPageTitleIs("Sign in to your account");
+                await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/sign-in**");
+                await generalStep.fillInTheInput("Email", inbox.address);
+                await generalStep.fillInTheInput("Password", logInData.password);
+                await generalStep.clickOnButton('Login');
+            });
+
+            await test.step('Thanks For Joining Page is opened', async () => {
+                await settingsStep.expectTermsThanksForJoiningPageIsVisible();
+                await generalStep.expectTheButtonIsDisabled('Complete Sign Up');
+                await settingsStep.clickOnCheckbox();
+                await generalStep.expectTheButtonIsEnabled('Complete Sign Up');
+                await generalStep.clickOnButton('Complete Sign Up');
+            });
+
+            await test.step('The user logs in to Prospect successfully', async () => {
+                await generalStep.expectPageTitleIs("Dashboard");
+                await generalStep.openAuthMenu();
+                await generalStep.expectProfileMenuUserDataIsVisible(`${inbox.address}`);
+            });
         });
 
-        await test.step('The new team member is added to the team', async () => {
-            await generalStep.expectPopUpNotificationIs("Invitation sent");
-            await generalStep.closePopUpNotification();
-            await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers.concat(yearTeamTestData.inboxEmail));
-        });
-    });
+        test('When the user goes to the confirmation link one more time, the the pop up notifies that the user already exist', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const temporaryInboxStep = new TemporaryInboxStep(page);
+            expect(inbox).toBeDefined();
+            expect(token).toBeDefined();
+            console.log(`confirmationLink ${confirmationLink}`)
 
-    // TODO Need because the tools are too expensive MailSlurp
-    test.skip('When the user accepts invite a new team member on Your Team page, the new team member logs in to ProspectAi', async ({ page }) => {
-        const generalStep = new GeneralStep(page);
-        const settingsStep = new SettingsStep(page);
-        //const inbox = (global as any).inbox;
-        //expect(inbox).toBeDefined();
+            inbox = await temporaryInboxStep.getTemporaryEmail(emailFilePath, tokenFilePath);
+            token = await temporaryInboxStep.getTemporaryToken(emailFilePath, tokenFilePath);
 
-        await test.step('When the user opens correspond ng email and goes to the confirmation link', async () => {
-            await settingsStep.gotoConfirmationLink(yearTeamTestData.inboxId, "Join Prospect AI - Accept Your Invitation Now");
-            confirmationLink = await settingsStep.getConfirmationLink(yearTeamTestData.inboxId, "Join Prospect AI - Accept Your Invitation Now");
-        });
+            await test.step('The the invitation page is opened', async () => {
+                //await temporaryInboxStep.gotoConfirmationLink(token, "Join Prospect AI - Accept Your Invitation Now");
+                await page.goto(confirmationLink);
+                await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/team/members/invitation/**");
+                await generalStep.expectPageTitleIs("Congratulations!");
+                await generalStep.expectTheButtonIsDisabled('Complete Registration');
+            });
 
-        await test.step('Then the invitation page is opened', async () => {
-            await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/team/members/invitation/**");
-            await generalStep.expectPageTitleIs("Congratulations!");
-            await generalStep.expectTheButtonIsDisabled('Complete Registration');
-        });
-
-        await test.step('When the user fills in the password and clicks on the "Complete Registration" button', async () => {
-            await generalStep.fillInTheInput("Password", logInData.password);
-            await generalStep.fillInTheInput("Confirm Password", logInData.password);
-            await generalStep.clickOnButton('Complete Registration');
-        });
-
-        await test.step('The Sign in page is opened', async () => {
-            await generalStep.expectPageTitleIs("Sign in to your account");
-            await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/sign-in**");
-            await generalStep.fillInTheInput("Email", yearTeamTestData.inboxEmail);
-            await generalStep.fillInTheInput("Password", logInData.password);
-            await generalStep.clickOnButton('Login');
-        });
-
-        await test.step('Thanks For Joining Page is opened', async () => {
-            await settingsStep.expectTermsThanksForJoiningPageIsVisible();
-            await generalStep.expectTheButtonIsDisabled('Complete Sign Up');
-            await settingsStep.clickOnCheckbox();
-            await generalStep.expectTheButtonIsEnabled('Complete Sign Up');
-            await generalStep.clickOnButton('Complete Sign Up');
-        });
-
-        await test.step('The user logs in to Prospect successfully', async () => {
-            await generalStep.expectPageTitleIs("Dashboard");
-            await generalStep.openAuthMenu();
-            await generalStep.expectProfileMenuUserDataIsVisible(`TP${yearTeamTestData.inboxEmail}`);
-        });
-    });
-
-    test.skip('When the user goes to the confirmation link one more time, the the pop up notifies that the user already exist', async ({ page }) => {
-        const generalStep = new GeneralStep(page);
-
-        await test.step('The the invitation page is opened', async () => {
-            await page.goto(confirmationLink);//not expired link 
-            await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/team/members/invitation/**");
-            await generalStep.expectPageTitleIs("Congratulations!");
-            await generalStep.expectTheButtonIsDisabled('Complete Registration');
-        });
-
-        await test.step(`When the user completes Registration via the same confirmation link`, async () => {
-            await generalStep.fillInTheInput("Password", yearTeamTestData.validPasswords[0]);
-            await generalStep.fillInTheInput("Confirm Password", yearTeamTestData.validPasswords[0]);
-            await generalStep.clickOnButton('Complete Registration');
-        });
-
-        await test.step('Then the validation error messages is received', async () => {
-            await generalStep.expectPopUpNotificationIs("A user with this email address already exists. You cannot invite a team member with this email address.");
-            await generalStep.closePopUpNotification();
-        });
-    });
-
-    test('When the user goes to the confirmation link and fills the password field with Valid data, the registration process completed ', async ({ page }) => {
-        const generalStep = new GeneralStep(page);
-        const loginStep = new LoginStep(page);
-
-        await test.step('The the invitation page is opened', async () => {
-            await page.goto(yearTeamTestData.confirmationLink);
-            await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/team/members/invitation/**");
-            await generalStep.expectPageTitleIs("Congratulations!");
-            await generalStep.expectTheButtonIsDisabled('Complete Registration');
-        });
-
-        for (const password of yearTeamTestData.validPasswords) {
-            await test.step(`When the user fills in the Password fields with ${password} and clicks on the 'Complete Registration' button`, async () => {
-                await generalStep.fillInTheInput("Password", password);
-                await loginStep.clickVisibilityIcon();
-                await generalStep.fillInTheInput("Confirm Password", password);
+            await test.step(`When the user completes Registration via the same confirmation link`, async () => {
+                await generalStep.fillInTheInput("Password", logInData.password);
+                await generalStep.fillInTheInput("Confirm Password", logInData.password);
                 await generalStep.clickOnButton('Complete Registration');
             });
 
             await test.step('Then the validation error messages is received', async () => {
-                await generalStep.expectValidationMessageIsNotVisible();
+                await generalStep.expectPopUpNotificationIs("User already accepted invitation");
+                await generalStep.closePopUpNotification();
             });
-        }
+        });
     });
 
-    test('When the user goes to the confirmation link and fills the password field with Invalid data the validation error message is received', async ({ page }) => {
-        const generalStep = new GeneralStep(page);
-        const loginStep = new LoginStep(page);
+    test.describe('2. When the team enjoys prospecting together the team has the following opportunity', () => {
+        test('When the user goes to the confirmation link and fills the password field with Valid data, the registration process completed ', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const loginStep = new LoginStep(page);
 
-        await test.step('The the invitation page is opened', async () => {
-            await page.goto(yearTeamTestData.confirmationLink);
-            await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/team/members/invitation/**");
-            await generalStep.expectPageTitleIs("Congratulations!");
-            await generalStep.expectTheButtonIsDisabled('Complete Registration');
+            await test.step('The the invitation page is opened', async () => {
+                await page.goto(yearTeamTestData.confirmationLink);
+                await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/team/members/invitation/**");
+                await generalStep.expectPageTitleIs("Congratulations!");
+                await generalStep.expectTheButtonIsDisabled('Complete Registration');
+            });
+
+            for (const password of yearTeamTestData.validPasswords) {
+                await test.step(`When the user fills in the Password fields with ${password} and clicks on the 'Complete Registration' button`, async () => {
+                    await generalStep.fillInTheInput("Password", password);
+                    await loginStep.clickVisibilityIcon();
+                    await generalStep.fillInTheInput("Confirm Password", password);
+                    await generalStep.clickOnButton('Complete Registration');
+                });
+
+                await test.step('Then the validation error messages is received', async () => {
+                    await generalStep.expectValidationMessageIsNotVisible();
+                });
+            }
         });
 
-        for (const password of yearTeamTestData.invalidPasswords) {
-            await test.step(`When the user fills in the Password fields with ${password} and clicks on the 'Complete Registration' button`, async () => {
-                await generalStep.fillInTheInput("Password", password);
-                await loginStep.clickVisibilityIcon();
-                await generalStep.fillInTheInput("Confirm Password", password);
+        test('When the user goes to the confirmation link and fills the password field with Invalid data the validation error message is received', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const loginStep = new LoginStep(page);
+
+            await test.step('The the invitation page is opened', async () => {
+                await page.goto(yearTeamTestData.confirmationLink);
+                await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/team/members/invitation/**");
+                await generalStep.expectPageTitleIs("Congratulations!");
+                await generalStep.expectTheButtonIsDisabled('Complete Registration');
+            });
+
+            for (const password of yearTeamTestData.invalidPasswords) {
+                await test.step(`When the user fills in the Password fields with ${password} and clicks on the 'Complete Registration' button`, async () => {
+                    await generalStep.fillInTheInput("Password", password);
+                    await loginStep.clickVisibilityIcon();
+                    await generalStep.fillInTheInput("Confirm Password", password);
+                    await generalStep.clickOnButton('Complete Registration');
+                });
+
+                await test.step('Then the validation error messages is received', async () => {
+                    await generalStep.expectValidationMessage('Password must contain between 8 and 64 characters, including at least one uppercase letter and one number');
+                });
+            }
+
+            await test.step('When the user fills in the fields with not matched passwords and clicks on the "Complete Registration" button', async () => {
+                await generalStep.clearInputField("Password");
+                await generalStep.expectTheButtonIsDisabled('Complete Registration');
+                await generalStep.fillInTheInput("Password", logInData.password);
+                await generalStep.fillInTheInput("Confirm Password", logInData.password + "1");
+                await generalStep.expectTheButtonIsEnabled('Complete Registration');
                 await generalStep.clickOnButton('Complete Registration');
             });
 
-            await test.step('Then the validation error messages is received', async () => {
-                await generalStep.expectValidationMessage('Password must contain between 8 and 64 characters, including at least one uppercase letter and one number');
+            await test.step('The validation error message is received', async () => {
+                await generalStep.expectValidationMessage("The passwords don't match");
             });
-        }
-
-        await test.step('When the user fills in the fields with not matched passwords and clicks on the "Complete Registration" button', async () => {
-            await generalStep.clearInputField("Password");
-            await generalStep.expectTheButtonIsDisabled('Complete Registration');
-            await generalStep.fillInTheInput("Password", logInData.password);
-            await generalStep.fillInTheInput("Confirm Password", logInData.password + "1");
-            await generalStep.expectTheButtonIsEnabled('Complete Registration');
-            await generalStep.clickOnButton('Complete Registration');
         });
 
-        await test.step('The validation error message is received', async () => {
-            await generalStep.expectValidationMessage("The passwords don't match");
-        });
-    });
+        test('When the user invites already existing team members on Your Team page, the error message is received', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const settingsStep = new SettingsStep(page);
+            const loginStep = new LoginStep(page);
 
-    test('When the user invites already existing team members on Your Team page, the error message is received', async ({ page }) => {
-        const generalStep = new GeneralStep(page);
-        const settingsStep = new SettingsStep(page);
-        const loginStep = new LoginStep(page);
+            await test.step('Navigate to the application', async () => {
+                await generalStep.open();
+                await loginStep.login(logInData.username, logInData.password);
+                await generalStep.expectPageTitleIs("Dashboard");
+            });
 
-        await test.step('Navigate to the application', async () => {
-            await generalStep.open();
-            await loginStep.login(logInData.username, logInData.password);
-            await generalStep.expectPageTitleIs("Dashboard");
-        });
+            await test.step('Year Team page is opened', async () => {
+                await generalStep.openAuthMenu();
+                await generalStep.expectAuthMenuItemsArePresented(['Settings']);
+                await generalStep.clickOnSubAuthMenuButton('Settings', 'Team');
+                await generalStep.expectPageTitleIs("Your Team");
+                await settingsStep.expectYearTeamContentIsVisible();
+                await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
+                await generalStep.expectButtonIsVisible('Add User');
+            });
 
-        await test.step('Year Team page is opened', async () => {
-            await generalStep.openAuthMenu();
-            await generalStep.expectAuthMenuItemsArePresented(['Settings']);
-            await generalStep.clickOnSubAuthMenuButton('Settings', 'Team');
-            await generalStep.expectPageTitleIs("Your Team");
-            await settingsStep.expectYearTeamContentIsVisible();
-            await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
-            await generalStep.expectButtonIsVisible('Add User');
-        });
+            await test.step('When the user invites a new team member on Year Team page', async () => {
+                await generalStep.clickOnButton('Add User');
+                await generalStep.expectModalIsShown("Add User");
+                await generalStep.fillInTheInput('Email', yearTeamTestData.inboxEmail);
+                await generalStep.clickOnButton('Save');
+            });
 
-        await test.step('When the user invites a new team member on Year Team page', async () => {
-            await generalStep.clickOnButton('Add User');
-            await generalStep.expectModalIsShown("Add User");
-            await generalStep.fillInTheInput('Email', yearTeamTestData.inboxEmail);
-            await generalStep.clickOnButton('Save');
-        });
-
-        await test.step('The new team member is added to the team', async () => {
-            await generalStep.expectPopUpNotificationIs("A user with this email address already exists. You cannot invite a team member with this email address.");
-            await generalStep.closePopUpNotification();
-        });
-    });
-
-    test('When the user edits a team member\'s name and role, the team member is updeted', async ({ page }) => {
-        const generalStep = new GeneralStep(page);
-        const settingsStep = new SettingsStep(page);
-        const loginStep = new LoginStep(page);
-        const authMenuStep = new AuthMenuStep(page);
-
-        await test.step('Navigate to the application', async () => {
-            await generalStep.open();
-            await loginStep.login(logInData.username, logInData.password);
-            await generalStep.expectPageTitleIs("Dashboard");
+            await test.step('The new team member is added to the team', async () => {
+                await generalStep.expectPopUpNotificationIs("A user with this email address already exists. You cannot invite a team member with this email address.");
+                await generalStep.closePopUpNotification();
+            });
         });
 
-        await test.step('Year Team page is opened', async () => {
-            await generalStep.openAuthMenu();
-            await generalStep.expectAuthMenuItemsArePresented(['Settings']);
-            await generalStep.clickOnSubAuthMenuButton('Settings', 'Team');
-            await generalStep.expectPageTitleIs("Your Team");
-            await settingsStep.expectYearTeamContentIsVisible();
-            await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
+        test('When the user edits a team member\'s name and role, the team member is updeted', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const settingsStep = new SettingsStep(page);
+            const loginStep = new LoginStep(page);
+            const authMenuStep = new AuthMenuStep(page);
+
+            await test.step('Navigate to the application', async () => {
+                await generalStep.open();
+                await loginStep.login(logInData.username, logInData.password);
+                await generalStep.expectPageTitleIs("Dashboard");
+            });
+
+            await test.step('Year Team page is opened', async () => {
+                await generalStep.openAuthMenu();
+                await generalStep.expectAuthMenuItemsArePresented(['Settings']);
+                await generalStep.clickOnSubAuthMenuButton('Settings', 'Team');
+                await generalStep.expectPageTitleIs("Your Team");
+                await settingsStep.expectYearTeamContentIsVisible();
+                await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
+            });
+
+            await test.step('When the user opens edit modal window', async () => {
+                const teamMember = await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2]);
+                if (await teamMember.count() > 0) {
+                    teamMember.hover();
+                    await generalStep.clickOnButton('Edit');
+                    await generalStep.expectModalIsShown("Edit User");
+                }
+            });
+
+            await test.step('The fields are shown prefilled', async () => {
+                await generalStep.expectFollowingFieldAreShown(
+                    ['First name', 'Last name', 'Email']);
+                await authMenuStep.expectFieldsAreFilled(
+                    ['First name', 'Last name', 'Email'],
+                    ['Test', 'ProspectAi', yearTeamTestData.testTeamMembers[2]]);
+                await settingsStep.expectRoleDropdownIs('User');
+                await generalStep.expectFieldIsUneditable('Email');
+            });
+
+            await test.step('When the user updates team member\'s data and clears all optinal fields', async () => {
+                await settingsStep.clearInputField('First Name');
+                await settingsStep.clearInputField('Last Name');
+                await authMenuStep.openDropdown('Role');
+                await generalStep.selectItemFromDropdown('Admin');
+                await generalStep.clickOnButton('Save');
+            });
+
+            await test.step('The team member is updeted', async () => {
+                await generalStep.expectPopUpNotificationIs("Changes saved");
+                await generalStep.closePopUpNotification();
+                await generalStep.expectModalIsNotShown("Edit User");
+            });
+
+            await test.step('When the user opens edit modal window', async () => {
+                const teamMember = await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2]);
+                if (await teamMember.count() > 0) {
+                    teamMember.hover();
+                    await generalStep.clickOnButton('Edit');
+                    await generalStep.expectModalIsShown("Edit User");
+                }
+            });
+
+            await test.step('The fields are shown prefilled', async () => {
+                await authMenuStep.expectFieldsAreFilled(
+                    ['First name', 'Last name'],
+                    ['', '']);
+                await settingsStep.expectRoleDropdownIs('Admin');
+            });
+
+            await test.step('When the user updates team member\'s data', async () => {
+                await settingsStep.fillInInputField('First Name', 'Test');
+                await settingsStep.fillInInputField('Last Name', 'ProspectAi');
+                await authMenuStep.openDropdown('Role');
+                await generalStep.selectItemFromDropdown('User');
+                await generalStep.clickOnButton('Save');
+            });
+
+            await test.step('The team member is updeted', async () => {
+                await generalStep.expectPopUpNotificationIs("Changes saved");
+                await generalStep.closePopUpNotification();
+                await generalStep.expectModalIsNotShown("Edit User");
+            });
         });
 
-        await test.step('When the user opens edit modal window', async () => {
-            const teamMember = await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2]);
-            if (await teamMember.count() > 0) {
-                teamMember.hover();
-                await generalStep.clickOnButton('Edit');
-                await generalStep.expectModalIsShown("Edit User");
-            }
+        test('When the team memeber with role \'Admin\' logs In Prospect Ai the user has the Full access to all features, plus user management', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const settingsStep = new SettingsStep(page);
+            const loginStep = new LoginStep(page);
+
+            await test.step('When the team memeber with role \'Admin\' logs In Prospect Ai', async () => {
+                await generalStep.open();
+                await loginStep.login(yearTeamTestData.testTeamMembers[1], logInData.password);
+                await generalStep.expectPageTitleIs("Dashboard");
+            });
+
+            await test.step('And the user opens Settings menu', async () => {
+                await generalStep.openAuthMenu();
+                await generalStep.expectAuthMenuItemsArePresented(['Settings']);
+                await generalStep.clickOnSubAuthMenuButton('Settings');
+            });
+
+            await test.step('The following items are shown', async () => {
+                await generalStep.expectAuthMenuItemsArePresented(['Light Theme', 'Password reset', 'Team', 'Refer a Friend', 'Tags Management', 'Usage', 'Subscription', 'Billing', 'API Key']);
+            });
+
+            await test.step('The team memeber with role \'Admin\' has opportunity to add team member on Year Team page', async () => {
+                await generalStep.clickOnSubAuthMenuButton('Team');
+                await generalStep.expectPageTitleIs("Your Team");
+                await settingsStep.expectYearTeamContentIsVisible();
+                await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
+                await settingsStep.expectTeamMembersRoleIs(yearTeamTestData.testTeamMembers[1], 'admin');
+                await generalStep.expectButtonIsVisible('Add User');
+            });
+
+            await test.step('The team memeber with role \'Admin\' has opportunity to edit and delete team members on Year Team page', async () => {
+                await (await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2])).hover();
+                await generalStep.expectButtonIsVisible('Edit');
+            });
+
+            await test.step('The team memeber with role \'Admin\' has opportunity to delete team members on Year Team page', async () => {
+                await (await settingsStep.getTeamMember(yearTeamTestData.inboxEmail)).hover();
+                await generalStep.expectButtonIsVisible('Delete');
+            });
+
+            await test.step('The team memeber with role \'Admin\' has opportunity to archived accepted team member on Year Team page', async () => {
+                await (await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2])).hover();
+                await generalStep.expectButtonIsVisible('Edit');
+                await generalStep.expectButtonIsVisible('Archive');
+                await generalStep.clickOnButton('Archive');
+                await generalStep.expectModalIsShown("User has activity history and will be archived");
+                await generalStep.clickOnButton('Archive');
+                await generalStep.expectPopUpNotificationIs("User has been archived");
+                await generalStep.closePopUpNotification();
+                await settingsStep.expectTeamMemberIsNotShown(yearTeamTestData.testTeamMembers[2]);
+            });
+
+            await test.step('The team memeber with role \'Admin\' has opportunity to restore accepted team member on Year Team page', async () => {
+                await generalStep.clickOnButton('View Archived Users');
+                await settingsStep.expectTeamMembersAre([yearTeamTestData.testTeamMembers[2]]);
+                await (await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2])).hover();
+                await generalStep.expectButtonIsVisible('Restore');
+                await generalStep.clickOnButton('Restore');
+                await generalStep.expectPopUpNotificationIs("User has been restored");
+                await generalStep.closePopUpNotification();
+                await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
+            });
         });
 
-        await test.step('The fields are shown prefilled', async () => {
-            await generalStep.expectFollowingFieldAreShown(
-                ['First name', 'Last name', 'Email']);
-            await authMenuStep.expectFieldsAreFilled(
-                ['First name', 'Last name', 'Email'],
-                ['Test', 'ProspectAi', yearTeamTestData.testTeamMembers[2]]);
-            await settingsStep.expectRoleDropdownIs('User');
-            await generalStep.expectFieldIsUneditable('Email');
-        });
+        test('When the team memeber with role \'User\' logs In ProspectAi the user has Access to all features but has not to user or billing management.', async ({ page }) => {
+            const generalStep = new GeneralStep(page);
+            const settingsStep = new SettingsStep(page);
+            const loginStep = new LoginStep(page);
 
-        await test.step('When the user updates team member\'s data and clears all optinal fields', async () => {
-            await settingsStep.clearInputField('First Name');
-            await settingsStep.clearInputField('Last Name');
-            await authMenuStep.openDropdown('Role');
-            await generalStep.selectItemFromDropdown('Admin');
-            await generalStep.clickOnButton('Save');
-        });
+            await test.step('When the team memeber with role \'User\' logs In Prospect Ai', async () => {
+                await generalStep.open();
+                await loginStep.login(yearTeamTestData.testTeamMembers[2], logInData.password);
 
-        await test.step('The team member is updeted', async () => {
-            await generalStep.expectPopUpNotificationIs("Changes saved");
-            await generalStep.closePopUpNotification();
-            await generalStep.expectModalIsNotShown("Edit User");
-        });
+                await generalStep.expectPageTitleIs("Dashboard");
+            });
 
-        await test.step('When the user opens edit modal window', async () => {
-            const teamMember = await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2]);
-            if (await teamMember.count() > 0) {
-                teamMember.hover();
-                await generalStep.clickOnButton('Edit');
-                await generalStep.expectModalIsShown("Edit User");
-            }
-        });
+            await test.step('And the user opens Settings menu', async () => {
+                await generalStep.openAuthMenu();
+                await generalStep.expectAuthMenuItemsArePresented(['Settings']);
+                await generalStep.clickOnSubAuthMenuButton('Settings');
+            });
 
-        await test.step('The fields are shown prefilled', async () => {
-            await authMenuStep.expectFieldsAreFilled(
-                ['First name', 'Last name'],
-                ['', '']);
-            await settingsStep.expectRoleDropdownIs('Admin');
-        });
+            await test.step('The following items are shown', async () => {
+                await generalStep.expectAuthMenuItemsArePresented(['Light Theme', 'Password reset', 'Team', 'Refer a Friend', 'Tags Management', 'API Key']);
+            });
 
-        await test.step('When the user updates team member\'s data', async () => {
-            await settingsStep.fillInInputField('First Name', 'Test');
-            await settingsStep.fillInInputField('Last Name', 'ProspectAi');
-            await authMenuStep.openDropdown('Role');
-            await generalStep.selectItemFromDropdown('User');
-            await generalStep.clickOnButton('Save');
-        });
+            await test.step('Opportunity to add team member is absent on Year Team page', async () => {
+                await generalStep.clickOnSubAuthMenuButton('Team');
+                await generalStep.expectPageTitleIs("Your Team");
+                await settingsStep.expectYearTeamContentIsVisible();
+                await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
+                await settingsStep.expectTeamMembersRoleIs(yearTeamTestData.testTeamMembers[2], 'User');
+                await generalStep.expectButtonIsNotVisible('Add User');
+            });
 
-        await test.step('The team member is updeted', async () => {
-            await generalStep.expectPopUpNotificationIs("Changes saved");
-            await generalStep.closePopUpNotification();
-            await generalStep.expectModalIsNotShown("Edit User");
-        });
-    });
-
-    test('When the team memeber with role \'Admin\' logs In Prospect Ai the user has the Full access to all features, plus user management', async ({ page }) => {
-        const generalStep = new GeneralStep(page);
-        const settingsStep = new SettingsStep(page);
-        const loginStep = new LoginStep(page);
-
-        await test.step('When the team memeber with role \'Admin\' logs In Prospect Ai', async () => {
-            await generalStep.open();
-            await loginStep.login(yearTeamTestData.testTeamMembers[1], logInData.password);
-            await generalStep.expectPageTitleIs("Dashboard");
-        });
-
-        await test.step('And the user opens Settings menu', async () => {
-            await generalStep.openAuthMenu();
-            await generalStep.expectAuthMenuItemsArePresented(['Settings']);
-            await generalStep.clickOnSubAuthMenuButton('Settings');
-        });
-
-        await test.step('The following items are shown', async () => {
-            await generalStep.expectAuthMenuItemsArePresented(['Light Theme', 'Password reset', 'Team', 'Refer a Friend', 'Tags Management', 'Usage', 'Subscription', 'Billing', 'API Key']);
-        });
-
-        await test.step('The team memeber with role \'Admin\' has opportunity to add team member on Year Team page', async () => {
-            await generalStep.clickOnSubAuthMenuButton('Team');
-            await generalStep.expectPageTitleIs("Your Team");
-            await settingsStep.expectYearTeamContentIsVisible();
-            await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
-            await settingsStep.expectTeamMembersRoleIs(yearTeamTestData.testTeamMembers[1], 'admin');
-            await generalStep.expectButtonIsVisible('Add User');
-        });
-
-        await test.step('The team memeber with role \'Admin\' has opportunity to edit and delete team members on Year Team page', async () => {
-            await (await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2])).hover();
-            await generalStep.expectButtonIsVisible('Edit');
-        });
-
-        await test.step('The team memeber with role \'Admin\' has opportunity to delete team members on Year Team page', async () => {
-            await (await settingsStep.getTeamMember(yearTeamTestData.inboxEmail)).hover();
-            await generalStep.expectButtonIsVisible('Delete');
-        });
-
-        await test.step('The team memeber with role \'Admin\' has opportunity to archived accepted team member on Year Team page', async () => {
-            await (await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2])).hover();
-            await generalStep.expectButtonIsVisible('Edit');
-            await generalStep.expectButtonIsVisible('Archive');
-            await generalStep.clickOnButton('Archive');
-            await generalStep.expectModalIsShown("User has activity history and will be archived");
-            await generalStep.clickOnButton('Archive');
-            await generalStep.expectPopUpNotificationIs("User has been archived");
-            await generalStep.closePopUpNotification();
-            await settingsStep.expectTeamMemberIsNotShown(yearTeamTestData.testTeamMembers[2]);
-        });
-
-        await test.step('The team memeber with role \'Admin\' has opportunity to restore accepted team member on Year Team page', async () => {
-            await generalStep.clickOnButton('View Archived Users');
-            await settingsStep.expectTeamMembersAre([yearTeamTestData.testTeamMembers[2]]);
-            await (await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2])).hover();
-            await generalStep.expectButtonIsVisible('Restore');
-            await generalStep.clickOnButton('Restore');
-            await generalStep.expectPopUpNotificationIs("User has been restored");
-            await generalStep.closePopUpNotification();
-            await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
-        });
-    });
-
-    test('When the team memeber with role \'User\' logs In ProspectAi the user has Access to all features but has not to user or billing management.', async ({ page }) => {
-        const generalStep = new GeneralStep(page);
-        const settingsStep = new SettingsStep(page);
-        const loginStep = new LoginStep(page);
-
-        await test.step('When the team memeber with role \'User\' logs In Prospect Ai', async () => {
-            await generalStep.open();
-            await loginStep.login(yearTeamTestData.testTeamMembers[2], logInData.password);
-
-            await generalStep.expectPageTitleIs("Dashboard");
-        });
-
-        await test.step('And the user opens Settings menu', async () => {
-            await generalStep.openAuthMenu();
-            await generalStep.expectAuthMenuItemsArePresented(['Settings']);
-            await generalStep.clickOnSubAuthMenuButton('Settings');
-        });
-
-        await test.step('The following items are shown', async () => {
-            await generalStep.expectAuthMenuItemsArePresented(['Light Theme', 'Password reset', 'Team', 'Refer a Friend', 'Tags Management', 'API Key']);
-        });
-
-        await test.step('Opportunity to add team member is absent on Year Team page', async () => {
-            await generalStep.clickOnSubAuthMenuButton('Team');
-            await generalStep.expectPageTitleIs("Your Team");
-            await settingsStep.expectYearTeamContentIsVisible();
-            await settingsStep.expectTeamMembersAre(yearTeamTestData.testTeamMembers);
-            await settingsStep.expectTeamMembersRoleIs(yearTeamTestData.testTeamMembers[2], 'User');
-            await generalStep.expectButtonIsNotVisible('Add User');
-        });
-
-        await test.step('Opportunity to edit and delete team members is absent on Year Team page', async () => {
-            await (await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2])).hover();
-            await generalStep.expectButtonIsNotVisible('Edit');
-            await generalStep.expectButtonIsNotVisible('Delete');
+            await test.step('Opportunity to edit and delete team members is absent on Year Team page', async () => {
+                await (await settingsStep.getTeamMember(yearTeamTestData.testTeamMembers[2])).hover();
+                await generalStep.expectButtonIsNotVisible('Edit');
+                await generalStep.expectButtonIsNotVisible('Delete');
+            });
         });
     });
 });

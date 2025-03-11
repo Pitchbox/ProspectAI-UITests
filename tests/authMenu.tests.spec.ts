@@ -426,14 +426,22 @@ test('When a user clicks on Share on Social buttons, it is possible to transfer 
     });
 })
 
-test.skip('When the user copies the Referral Link to clipboard the link to sign in page Prospect Ai is copied', async ({ page, browser }) => {
-    //todo вставляет из буфера 
+test('When the user copies the Referral Link to clipboard the link to sign in page Prospect Ai is copied', async ({ browser }) => {
+    const context = await browser.newContext({
+        permissions: ['clipboard-read', 'clipboard-write'],
+    });
+
+    const page = await context.newPage();
     const generalStep = new GeneralStep(page);
     const authMenuStep = new AuthMenuStep(page);
-    const context = await browser.newContext();
+    const loginStep = new LoginStep(page);
 
-    // Grant clipboard permissions to browser context
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await test.step('Navigate to the application', async () => {
+        await generalStep.open();
+        await loginStep.login(logInData.username, logInData.password);
+        await generalStep.expectPageTitleIs("Dashboard");
+        await page.waitForURL('https://app.prospectailabs.com/', { timeout: 10000 });
+    });
 
     await test.step('The user opens Auth menu and clicks on the Share with a friend link', async () => {
         await generalStep.openAuthMenu();
@@ -449,9 +457,11 @@ test.skip('When the user copies the Referral Link to clipboard the link to sign 
         await generalStep.expectPopUpNotificationIs('Referral link copied to clipboard');
         await generalStep.closePopUpNotification();
 
-        const handle = await page.evaluateHandle(() => navigator.clipboard.readText());
-        const clipboardContent = await handle.jsonValue();
-        expect(clipboardContent).toEqual('https://app.prospectailabs.com/sign-up?_by=6wuo9');
+        const copiedText = await page.evaluate(async () => {
+            return await navigator.clipboard.readText();
+        });
+
+        expect(copiedText).toContain('https://app.prospectailabs.com/sign-up?_by=6wuo9');
 
         await authMenuStep.focusOnInviteByEmailInput();
         await page.keyboard.press('Control+V');

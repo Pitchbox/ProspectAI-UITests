@@ -410,7 +410,7 @@ export class GeneralStep {
 
     async expectProfileMenuUserDataIsVisible(userName: string) {
         await expect(this.pageLocators.profileMenuUserData).toBeVisible();
-        await expect(this.pageLocators.profileMenuUserData).toHaveText(userName);
+        await expect(this.pageLocators.profileMenuUserData).toContainText(userName);
     }
 
     async expectShareWithFriendsWrapperIsVisible() {

@@ -1,5 +1,4 @@
 import { Locator, Page } from '@playwright/test';
-import { read } from 'fs';
 
 export class VerifyEmailSearchPage {
     readonly page: Page;
@@ -19,7 +18,7 @@ export class VerifyEmailSearchPage {
         this.page = page;
         this.headerEmailVerificationReport = page.locator('div[class="email-header"] p');
         this.headerBulkEmailVerificationResult = page.locator('p[class="email"]');
-        this.searchBulkEmailsInput = page.getByPlaceholder('john.doe@example.com\njohn.doe@example.com'); this.verifyButton
+        this.searchBulkEmailsInput = page.getByPlaceholder('john.doe@example.com\njohn.doe@example.com');
         this.searchEmailInput = page.getByPlaceholder('john.doe@example.com');
         this.verifyButton = page.locator('button', { hasText: 'Verify' });
         this.switcherToSingleEmailVerification = page.locator('div.tab-item', { hasText: 'Single Email Verification' });
