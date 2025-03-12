@@ -1,7 +1,3 @@
-import { expect } from "@playwright/test";
-import { url } from "inspector";
-import test from "node:test";
-
 export const logInData = {
     username: "prospectaiautotests@gmail.com",
     password: "Test!2025",
@@ -10,7 +6,7 @@ export const logInData = {
 
 export const emailCleaningListTestData = {
     username: "test.prospectai@gmail.com",
-    password: "Poma!2014",
+    password: "Test!2025",
     emailCleaningLists: ["1QTestListForSelectedEmails", "qa", "1QTestListForDownload", "ForArchive"],
     uploadedEmailCleaningList: "Test1List 2",
     newListName: 'Test1List New',
@@ -76,6 +72,7 @@ export const testDataListsPage = {
 export const contactsTestData = {
     username: 'prospecttest716@gmail.com',
     password: 'Test!2025',
+    preSetUpContacts: ['vetdiet@chewy.com', 'zoo@plus.com', 'rhea@longmonthumane.org'],
     domains: [
         'JWafPJEfqKqcvbZNBRnRBYbViZVckQGoPLBTsAaZEFHXGcYdguXAfoxMVdLsm.JWafPJEfqKqcvbZNBRnRBYbViZVckQGoPLBTsAaZEFHXGcYdguXAfoxMVdLszYt.JWafPJEfqKqcvbZNBRnRBYbViZVckQGoPLBTsAaZEFHXGcYdguXAfoxMVdLszYt.JWafPJEfqKqcvbZNBRnRBYbViZVckQGoPLBTsAaZEFHXGcYdguXAfoxMVdLsyy',
         't.io',
@@ -194,7 +191,7 @@ export const yearTeamTestData = {
         'Pass!12',
         'pass!123'
     ],
-    confirmationLink: 'https://app.prospectailabs.com/team/members/invitation/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NDI3LCJnZW5lcmF0ZUF0IjoiMjAyNS0wMi0yNlQxMjowMzoxMS44NDRaIiwiZXhwaXJlQXQiOiIyMDI1LTAyLTI2VDEzOjAzOjExLjg0NFoiLCJpYXQiOjE3NDA1NzEzOTEsImV4cCI6MTc0MDU3NDk5MX0.xOS4fqM4yJmNv5Vn29zPfBhii-B-WYDGH912vQwEylU'
+    confirmationLinkTest: 'https://app.prospectailabs.com/team/members/invitation/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NDI3LCJnZW5lcmF0ZUF0IjoiMjAyNS0wMi0yNlQxMjowMzoxMS44NDRaIiwiZXhwaXJlQXQiOiIyMDI1LTAyLTI2VDEzOjAzOjExLjg0NFoiLCJpYXQiOjE3NDA1NzEzOTEsImV4cCI6MTc0MDU3NDk5MX0.xOS4fqM4yJmNv5Vn29zPfBhii-B-WYDGH912vQwEylU'
 }
 
 export const resetPasswordTestData = {

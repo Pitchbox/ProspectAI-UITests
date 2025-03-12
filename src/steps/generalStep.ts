@@ -210,10 +210,6 @@ export class GeneralStep {
         await field.click();
     }
 
-    async clickOnTheDropdown(nameField: string) {
-        const field = await this.pageLocators.getElementByLable(nameField);
-    }
-
     async selectItemFromDropdown(nameItem: string) {
         await (await this.pageLocators.selectCorrespondingItem(nameItem)).click();
     }

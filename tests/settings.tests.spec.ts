@@ -7,7 +7,6 @@ import { logInData, resetPasswordTestData, yearTeamTestData, testDataSubscriptio
 import { VerifyEmailSearchStep } from '../src/steps/verifyEmailSearchStep';
 import { TemporaryInboxStep } from '../src/steps/temporaryInboxStep';
 import { MailTmResponse } from '../src/models/mailTmResponseModel';
-import { time } from 'console';
 
 test('When the user opens Settings page, the following items are shown', async ({ page }) => {
     const generalStep = new GeneralStep(page);
@@ -391,7 +390,7 @@ test.describe('The team enjoys prospecting together', () => {
             const loginStep = new LoginStep(page);
 
             await test.step('The the invitation page is opened', async () => {
-                await page.goto(yearTeamTestData.confirmationLink);
+                await page.goto(yearTeamTestData.confirmationLinkTest);
                 await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/team/members/invitation/**");
                 await generalStep.expectPageTitleIs("Congratulations!");
                 await generalStep.expectTheButtonIsDisabled('Complete Registration');
@@ -416,7 +415,7 @@ test.describe('The team enjoys prospecting together', () => {
             const loginStep = new LoginStep(page);
 
             await test.step('The the invitation page is opened', async () => {
-                await page.goto(yearTeamTestData.confirmationLink);
+                await page.goto(yearTeamTestData.confirmationLinkTest);
                 await generalStep.expectCorrespondingUrl("//app.prospectailabs.com/team/members/invitation/**");
                 await generalStep.expectPageTitleIs("Congratulations!");
                 await generalStep.expectTheButtonIsDisabled('Complete Registration');

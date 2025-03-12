@@ -59,22 +59,12 @@ export class ContactsStep {
         await this.pageLocators.itemOfUploadContactMenu.click();
     }
 
-    async clickOnSelectListDropDown() {
-        await this.pageLocators.selectListDropdown.click();
-    }
-
     async fillInTheInputField(fieldName: string, text: string) {
         await (await this.pageLocators.getInputFieldByLabel(fieldName)).fill(text);
     }
 
     async clearInputField(fieldName: string) {
         await (await this.pageLocators.getInputFieldByLabel(fieldName)).clear();
-    }
-
-    //Select list from dropdown / select Company from dropdown on Add Contact Drawer
-    async selectItemFromDropdown(listName: string) {
-        const list = await this.pageLocators.getItemFromDropdown(listName);
-        await list.click();
     }
 
     async fillInMenuSearchInput(text: string) {

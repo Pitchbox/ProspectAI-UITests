@@ -6,7 +6,7 @@ import { contactsTestData } from '../src/helpers/TestConstants';
 import { ProspectListsStep } from '../src/steps/prospectListsStep';
 import { EmailCleaningListStep } from '../src/steps/emailCleaningListStep';
 
-test.describe.serial("The user can add companies/contacts and assign to companies/contacts", () => {
+test.describe("Feature 1: The user can add companies/contacts and assign to companies/contacts", () => {
     test.setTimeout(60000);
 
     test.beforeEach(async ({ page }) => {
@@ -18,7 +18,7 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         await generalStep.expectPageTitleIs("Dashboard");
     });
 
-    test('When the user deletes the contacts, lists and companies are deleted', async ({ page }) => {
+    test('Scenario 1.1: When the user deletes the contacts, lists and companies are deleted', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
         const prospectListsStep = new ProspectListsStep(page);
@@ -29,52 +29,30 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         });
 
         await test.step('Delete the test contacts from address book', async () => {
-            const testLists = await prospectListsStep.getAllTestLists('Prospect');
+            await prospectListsStep.clickOnTheList('Address Book');
+            await generalStep.expectPageTitleIs("Contacts");
 
-            if (Array.isArray(testLists) && testLists.length !== 0) {
-                await prospectListsStep.clickOnTheList('Prospect 1');
-                await generalStep.expectPageTitleIs("Prospect 1");
+            if (await contactsStep.theTableIsLoaded()) {
+                const countRows = await contactsStep.getCoutnOfRows();
 
-                if (await contactsStep.theTableIsLoaded()) {
-                    await contactsStep.expectLoaderHidden();
-                    const countRows = await contactsStep.getCoutnOfRows();
-                    if (countRows > 1) {
-                        await contactsStep.clickOnToggleAllCheckbox();
+                if (countRows > 1) {
+
+                    for (const email of contactsTestData.contactsTestEmails) {
+                        await generalStep.checkTheChechbox(email);
+                    }
+                    if (await generalStep.countCheckedCheckboxes() > 0) {
                         await generalStep.clickOnButton('Delete');
                         await generalStep.expectModalIsShown("Are you sure you want to delete selected contacts from the address book?");
                         await contactsStep.confirmDeleteContacts();
                         await generalStep.expectPopUpNotificationIs("Contacts have been deleted");
                         await generalStep.closePopUpNotification();
-                        await contactsStep.expectItemAreNotInList('email', contactsTestData.contactsTestEmails);
                     }
-                }
-                else {
-                    console.log('No rows to show is visible');
-                    return;
+                    await contactsStep.expectItemAreNotInList('email', contactsTestData.contactsTestEmails);
                 }
             }
             else {
-                await prospectListsStep.clickOnTheList('Address Book');
-                await generalStep.expectPageTitleIs("Contacts");
-
-                if (await contactsStep.theTableIsLoaded()) {
-                    const countRows = await contactsStep.getCoutnOfRows();
-
-                    if (countRows > 1) {
-
-                        for (const email of contactsTestData.contactsTestEmails) {
-                            await generalStep.checkTheChechbox(email);
-                        }
-                        if (await generalStep.countCheckedCheckboxes() > 0) {
-                            await generalStep.clickOnButton('Delete');
-                            await generalStep.expectModalIsShown("Are you sure you want to delete selected contacts from the address book?");
-                            await contactsStep.confirmDeleteContacts();
-                            await generalStep.expectPopUpNotificationIs("Contacts have been deleted");
-                            await generalStep.closePopUpNotification();
-                        }
-                        await contactsStep.expectItemAreNotInList('email', contactsTestData.contactsTestEmails);
-                    }
-                }
+                console.log('No rows to show is visible');
+                return;
             }
         });
 
@@ -122,7 +100,7 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         });
     });
 
-    test('When the user adds the companies, then the companies are shown on Companies page', async ({ page }) => {
+    test('Scenario 1.2: When the user adds the companies, then the companies are shown on Companies page', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
 
@@ -196,7 +174,7 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         });
     });
 
-    test('When the user bulk adds the contacts the contacts are shown on Contacts page', async ({ page }) => {
+    test('Scenario 1.3: When the user bulk adds the contacts the contacts are shown on Contacts page', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
         const prospectListsStep = new ProspectListsStep(page);
@@ -209,7 +187,7 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         });
 
         //Create the list
-        await test.step('When the user creates New Lists, the new lists are created', async () => {
+        await test.step('The new list is created', async () => {
             await prospectListsStep.createList('Prospect ', 1);
             await generalStep.expectPopUpNotificationIs('List has been created');
             await generalStep.closePopUpNotification();
@@ -217,7 +195,7 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         });
 
         //Upload the file of contacts
-        await test.step('Upload the file of contacts', async () => {
+        await test.step('When the user uploads the file of contacts', async () => {
             const fileName = filePath.split('/').pop();
             await generalStep.clickOnSubMenuButton('Contacts');
             await generalStep.expectPageTitleIs('Contacts');
@@ -227,21 +205,24 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await generalStep.uploadFile(filePath);
             await generalStep.expectFileIsUploaded(`${fileName}`);
             await generalStep.addList('Prospect 1');
-            //await contactsStep.clickOnSelectListDropDown();
-            //await contactsStep.selectItemFromDropdown('Prospect 1');
-
             await generalStep.clickOnButton('Next Step');
             await generalStep.expectModalIsShown('Column Matching');
             await emailCleaningListStep.expectRecognizedEmailsIsShown(filePath)//todo the reader of file in generalStep doesn't work
-            //await generalStep.expectRecognizedEmailsIsShown(filePath);
             await generalStep.clickOnButton('Upload');
             await generalStep.expectModalIsShown('Contact Import Statistics');
             await generalStep.clickOnButton('Close');
             await generalStep.expectPageTitleIs('Contacts');
         });
+
+        await test.step('The contacts are shown on Contacts page', async () => {
+            var uploadContacts = await emailCleaningListStep.readCsv(filePath);
+            for (const email of uploadContacts) {
+                await generalStep.expectItemsAreInTheList('email', email);
+            }
+        });
     });
 
-    test('When the user adds the contacts, then the contacts are shown on Contacts page', async ({ page }) => {
+    test('Scenario 1.4: When the user adds the contacts, then the contacts are shown on Contacts page', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
         const prospectListsStep = new ProspectListsStep(page);
@@ -252,8 +233,8 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         });
 
         await test.step('When the user adds contact, the item is displayed in the Contacts table', async () => {
-            await prospectListsStep.clickOnTheList('Prospect 1');
-            await generalStep.expectPageTitleIs("Prospect 1");
+            await prospectListsStep.clickOnTheList('Default');
+            await generalStep.expectPageTitleIs("Default");
             await contactsStep.clickOnAddContactButton();
             await contactsStep.fillInTheInputField('First name', 'Alan');
             await contactsStep.fillInTheInputField('Last name', 'Ross');
@@ -261,11 +242,11 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await contactsStep.fillInTheInputField('Phone', '12345678');
             await contactsStep.fillInTheInputField('Job Title', 'QA');
             await contactsStep.openCompaniesDropdownAddContactDrawer();
-            await contactsStep.selectItemFromDropdown('T1');
+            await generalStep.selectItemFromDropdown('T1');
             await contactsStep.clickOnCreateContactButton();
             await generalStep.expectPopUpNotificationIs('Contact has been created successfully');
             await generalStep.closePopUpNotification();
-            await generalStep.expectPageTitleIs("Prospect 1");
+            await generalStep.expectPageTitleIs("Default");
             await generalStep.searchFor('alan.ross@h2scan.com');
             await contactsStep.expectItemsAreInList('email', ['alan.ross@h2scan.com']);
         });
@@ -277,10 +258,10 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await contactsStep.clickOnCreateContactButton();
             await generalStep.expectPopUpNotificationIs('Contact already exists');
             await generalStep.closePopUpNotification();
-            await generalStep.expectPageTitleIs("Prospect 1");
+            await generalStep.expectPageTitleIs("Default");
             await generalStep.expectItemsAreInTheList('email', 'alan.ross@h2scan.com');
             await page.keyboard.press('Escape');
-            await generalStep.expectPageTitleIs("Prospect 1");
+            await generalStep.expectPageTitleIs("Default");
         });
 
         await test.step('When the user adds contact without filling required fields, the validation error message is received', async () => {
@@ -288,10 +269,10 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await contactsStep.clickOnCreateContactButton();
             await contactsStep.expectErrorIsPresented('Email', 'This field is required');
             await page.keyboard.press('Escape');
-            await generalStep.expectPageTitleIs("Prospect 1");
+            await generalStep.expectPageTitleIs("Default");
         });
 
-        await test.step('When the user adds contact with invalid data, the validation error message is received', async () => {
+        await test.step('When the user adds contact with Invalid data, the validation error message is received', async () => {
             await contactsStep.clickOnAddContactButton();
             await contactsStep.fillInTheInputField('First name', '!@#$%^&*()<>?:"{}|_+');
             await contactsStep.fillInTheInputField('Last name', '!@#$%^&*()<>?:"{}|_+');
@@ -304,11 +285,11 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await contactsStep.expectErrorIsPresented('First name', 'Invalid value');
             await contactsStep.expectErrorIsPresented('Last name', 'Invalid value');
             await page.keyboard.press('Escape');
-            await generalStep.expectPageTitleIs("Prospect 1");
+            await generalStep.expectPageTitleIs("Default");
         });
     });
 
-    test('When the user assigns the company to the new contact, the contact is created and assigned to the company', async ({ page }) => {
+    test('Scenario 1.5: When the user assigns the company to the new contact, the contact is created and assigned to the company', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
 
@@ -317,12 +298,12 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await generalStep.expectPageTitleIs("Companies");
         });
 
-        await test.step('When the user assigns the company to new contacts with valid data, the contact is created and company is assigned to this contacts', async () => {
+        await test.step('When the user assigns the company to new contacts with Valid data, the contact is created and company is assigned to this contacts', async () => {
             await contactsStep.clickOnTheCorrespondingRowTable('organization', 'Halian.com');
             await generalStep.expectDrawerIsShown();
             await generalStep.clickOnButton('New Contact');
             await generalStep.expectModalIsShown('Add Contact to Halian.com');
-            await generalStep.addList('Prospect 1');
+            await generalStep.addList('Default');
             await contactsStep.fillInTheInputField('First name', 'Kirstine');
             await contactsStep.fillInTheInputField('Last name', 'Donat');
             await contactsStep.fillInTheInputField('Email', 'kirstine@qa-financial.com');
@@ -363,7 +344,7 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await generalStep.expectPageTitleIs('Companies');
         });
 
-        await test.step('When the user assigns new contact with invalid data, the validation error message is received', async () => {
+        await test.step('When the user assigns new contact with Invalid data, the validation error message is received', async () => {
             await contactsStep.clickOnTheCorrespondingRowTable('organization', contactsTestData.companyNames[2]);
             await generalStep.expectDrawerIsShown();
             await generalStep.clickOnButton('Add Contact');
@@ -384,7 +365,7 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         });
     });
 
-    test('When the user assigns contacts to the company the contacts are assigned to the company', async ({ page }) => {
+    test('Scenario 1.6: When the user assigns contacts to the company the contacts are assigned to the company', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
 
@@ -394,7 +375,7 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         });
 
         await test.step('When the user assigns the contact to the company, the contact is assigned to the company', async () => {
-            await contactsStep.clickOnTheCorrespondingRowTable('email', 'zak@duck.com');
+            await contactsStep.clickOnTheCorrespondingRowTable('email', contactsTestData.preSetUpContacts[0]);
             await generalStep.expectDrawerIsShown();
             await generalStep.clickOnButton('Assign Company');
             await contactsStep.selectItemFromContactsDropdown('Halian.com');
@@ -403,11 +384,11 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await generalStep.expectButtonIsVisible('Halian.com');//check the company is assigned
             await page.keyboard.press('Escape');//close the drawer
             await generalStep.expectPageTitleIs('Contacts');
-            await generalStep.expectItemByEmail('zak@duck.com', 'companyName', 'Halian.com');
+            await generalStep.expectItemByEmail(contactsTestData.preSetUpContacts[0], 'companyName', 'Halian.com');
         });
 
         await test.step('When a user assigns a contact to the another company, the contact is assigned to the another company', async () => {
-            await contactsStep.clickOnTheCorrespondingRowTable('email', 'zak@duck.com');
+            await contactsStep.clickOnTheCorrespondingRowTable('email', contactsTestData.preSetUpContacts[0]);
             await generalStep.expectDrawerIsShown();
             await generalStep.clickOnButton('Halian.com');
             await contactsStep.selectItemFromContactsDropdown('T1');
@@ -416,11 +397,11 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await generalStep.expectButtonIsVisible('T1');//check the company is assigned
             await page.keyboard.press('Escape');//close the drawer
             await generalStep.expectPageTitleIs('Contacts');
-            await generalStep.expectItemByEmail('zak@duck.com', 'companyName', 'T1');
+            await generalStep.expectItemByEmail(contactsTestData.preSetUpContacts[0], 'companyName', 'T1');
         });
     });
 
-    test('When the user assigns the company to the contacts, the company is assigned to the contacts', async ({ page }) => {
+    test('Scenario 1.7: When the user assigns the company to the contacts, the company is assigned to the contacts', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
 
@@ -435,23 +416,23 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await generalStep.clickOnButton('Add Contact');
             await contactsStep.fillInMenuSearchInput('zo');
             await contactsStep.expectItemsAreInDropdown('zo');
-            await contactsStep.selectItemFromContactsDropdown('zoodonate_bg@zooplus.com');
+            await contactsStep.selectItemFromContactsDropdown(contactsTestData.preSetUpContacts[1]);
             await generalStep.expectPopUpNotificationIs('Contact has been added successfully');
             await generalStep.closePopUpNotification();
-            await contactsStep.expectContactsIsInTheListOnDrawer('zoodonate_bg@zooplus.com');
+            await contactsStep.expectContactsIsInTheListOnDrawer(contactsTestData.preSetUpContacts[1]);
         });
 
         await test.step('And the user tries to assign to same contacts, there is no this contact among the dropdown items', async () => {
             await generalStep.expectDrawerIsShown();
             await generalStep.clickOnButton('Add Contact');
             await contactsStep.fillInMenuSearchInput('zo');
-            await contactsStep.expectItemIsNotInDropdown('zoodonate_bg@zooplus.com');
+            await contactsStep.expectItemIsNotInDropdown(contactsTestData.preSetUpContacts[1]);
             await page.keyboard.press('Escape');        //close the drawer
             await generalStep.expectPageTitleIs('Companies');
         });
     });
 
-    test('When the user assigns already assigned contact, the extra clarifying question is shown', async ({ page }) => {
+    test('Scenario 1.8: When the user assigns already assigned contact, the extra clarifying question is shown', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
 
@@ -464,8 +445,8 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await contactsStep.clickOnTheCorrespondingRowTable('organization', 'T1');
             await generalStep.expectDrawerIsShown();
             await generalStep.clickOnButton('Add Contact');
-            await contactsStep.fillInMenuSearchInput('zoodonate_bg@zooplus.com');
-            await contactsStep.selectItemFromContactsDropdown('zoodonate_bg@zooplus.com');
+            await contactsStep.fillInMenuSearchInput(contactsTestData.preSetUpContacts[1]);
+            await contactsStep.selectItemFromContactsDropdown(contactsTestData.preSetUpContacts[1]);
             await generalStep.expectModalIsShown('This contact is assigned to company "www.halian.com". Are you sure you want to move it to "T1"?');
             await generalStep.clickOnButton('Save');
         });
@@ -473,13 +454,13 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         await test.step('The extra clarifying question is shown', async () => {
             await generalStep.expectPopUpNotificationIs('Contact has been added successfully');
             await generalStep.closePopUpNotification();
-            await contactsStep.expectContactsIsInTheListOnDrawer('zoodonate_bg@zooplus.com');
+            await contactsStep.expectContactsIsInTheListOnDrawer(contactsTestData.preSetUpContacts[1]);
             await page.keyboard.press('Escape');//close the drawer
             await generalStep.expectPageTitleIs('Companies');
         });
     });
 
-    test('When the user exports selected companies on the Companies page the companies are downloaded', async ({ page }) => {
+    test('Scenario 1.9: When the user exports selected companies on the Companies page the companies are downloaded', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
         const downloadPath = './downloads/downloadCompanies.csv';
@@ -501,7 +482,7 @@ test.describe.serial("The user can add companies/contacts and assign to companie
         });
     });
 
-    test('When the user exports selected contacts on the Contacts page the contacts are downloaded', async ({ page }) => {
+    test('Scenario 1.10: When the user exports selected contacts on the Contacts page the contacts are downloaded', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
 
@@ -509,21 +490,21 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await generalStep.clickOnMainMenuButton('Prospects', 'Contacts');
             await generalStep.expectPageTitleIs("Contacts");
             await contactsStep.expectLoaderHidden();
-            await contactsStep.expectItemsAreInList('email', contactsTestData.contactsTestEmails);
+            await contactsStep.expectItemsAreInList('email', contactsTestData.preSetUpContacts);
         });
 
         await test.step('When the user exports selected contacts on the Contacts page the contacts are downloaded', async () => {
             const downloadPath = './downloads/downloadContacts.csv';
-            await generalStep.checkTheChechbox("dl-affiliates@justanswer.com");
-            await generalStep.checkTheChechbox("zoodonate_bg@zooplus.com");
+            await generalStep.checkTheChechbox(contactsTestData.preSetUpContacts[0]);
+            await generalStep.checkTheChechbox(contactsTestData.preSetUpContacts[1]);
             expect(await generalStep.countCheckedCheckboxes()).toBe(2);
             await generalStep.saveDownloadedFile(downloadPath, 'Export');
-            await generalStep.selectedEmailsAreDownloaded(downloadPath, 'Email', ["dl-affiliates@justanswer.com", "zoodonate_bg@zooplus.com"]);
+            await generalStep.selectedEmailsAreDownloaded(downloadPath, 'Email', [contactsTestData.preSetUpContacts[0], contactsTestData.preSetUpContacts[1]]);
             await generalStep.deleteTheDownloadedFile(downloadPath);
         });
     });
 
-    test('When the user copies, moves, removes the contacts to corresponding list, the contacts are copied, moved, removed', async ({ page }) => {
+    test('Scenario 1.11: When the user copies, moves, removes the contacts to corresponding list, the contacts are copied, moved, removed', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
         const prospectListsStep = new ProspectListsStep(page);
@@ -533,55 +514,62 @@ test.describe.serial("The user can add companies/contacts and assign to companie
             await generalStep.expectPageTitleIs("Lists");
         });
 
+        await test.step('The new list is created', async () => {
+            await prospectListsStep.createList('Prospect ', 2);
+            await generalStep.expectPopUpNotificationIs('List has been created');
+            await generalStep.closePopUpNotification();
+            await generalStep.expectPageTitleIs('Lists');
+        });
+
         await test.step('When the user moves to list corresponding contacts', async () => {
-            await prospectListsStep.clickOnTheList('Prospect 1');
-            await generalStep.expectPageTitleIs("Prospect 1");
-            await contactsStep.expectItemsAreInList('email', ["321.qwerty@sciplay.com"]);
-            await generalStep.checkTheChechbox("321.qwerty@sciplay.com");
+            await prospectListsStep.clickOnTheList('Default');
+            await generalStep.expectPageTitleIs("Default");
+            await contactsStep.expectItemsAreInList('email', [contactsTestData.preSetUpContacts[2]]);
+            await generalStep.checkTheChechbox(contactsTestData.preSetUpContacts[2]);
             expect(await generalStep.countCheckedCheckboxes()).toBe(1);
             await generalStep.clickActionButton('Move to Another List');
             await generalStep.expectModalIsShown('Move to Another List');
-            await generalStep.addList('Default');
+            await generalStep.addList('Prospect 2');
             await generalStep.clickOnButton('Move');
             await generalStep.expectPopUpNotificationIs('Contacts moved successfully');
             await generalStep.closePopUpNotification();
         });
 
         await test.step('Then the contacts are moved to the selected list', async () => {
-            await generalStep.expectPageTitleIs("Prospect 1");
-            await contactsStep.expectItemAreNotInList('email', ["321.qwerty@sciplay.com"]);//contact is not in the old list 
+            await generalStep.expectPageTitleIs("Default");
+            await contactsStep.expectItemAreNotInList('email', [contactsTestData.preSetUpContacts[2]]);//contact is not in the old list 
             await generalStep.clickOnMainMenuButton('Prospects', 'Lists');
             await generalStep.expectPageTitleIs("Lists");
-            await prospectListsStep.clickOnTheList('Default');
-            await generalStep.expectPageTitleIs("Default");
-            await contactsStep.expectItemsAreInList('email', ["321.qwerty@sciplay.com"]);//contact is in the new list 
+            await prospectListsStep.clickOnTheList('Prospect 2');
+            await generalStep.expectPageTitleIs("Prospect 2");
+            await contactsStep.expectItemsAreInList('email', [contactsTestData.preSetUpContacts[2]]);//contact is in the new list 
         });
 
         await test.step('When the user copies corresponding contacts to the selected list', async () => {
-            await generalStep.checkTheChechbox("321.qwerty@sciplay.com");
+            await generalStep.checkTheChechbox(contactsTestData.preSetUpContacts[2]);
             await generalStep.clickActionButton('Copy to List');
             await generalStep.expectModalIsShown('Copy to List');
-            await generalStep.addList('Prospect 1');
+            await generalStep.addList('Default');
             await generalStep.clickOnButton('Copy');
             await generalStep.expectPopUpNotificationIs('Contacts copied to lists successfully');
             await generalStep.closePopUpNotification();
         });
 
         await test.step('Then contacts are copied to the selected list', async () => {
-            await generalStep.expectPageTitleIs("Default");
-            await contactsStep.expectItemsAreInList('email', ["321.qwerty@sciplay.com"]);//contact is still in the old list 
+            await generalStep.expectPageTitleIs("Prospect 2");
+            await contactsStep.expectItemsAreInList('email', [contactsTestData.preSetUpContacts[2]]);//contact is still in the old list 
             await generalStep.clickOnMainMenuButton('Prospect', 'Lists');
             await generalStep.expectPageTitleIs("Lists");
             await prospectListsStep.clickOnTheList('Default');
             await generalStep.expectPageTitleIs("Default");
-            await contactsStep.expectItemsAreInList('email', ["321.qwerty@sciplay.com"]);//contact is in the new list 
+            await contactsStep.expectItemsAreInList('email', [contactsTestData.preSetUpContacts[2]]);//contact is in the new list 
         });
 
         await test.step('When the user removes from list corresponding contacts', async () => {
-            await generalStep.checkTheChechbox("321.qwerty@sciplay.com");
+            await generalStep.checkTheChechbox(contactsTestData.preSetUpContacts[2]);
             await generalStep.clickActionButton('Remove from List');
             await generalStep.expectModalIsShown('Remove from List');
-            await generalStep.addList('Default');
+            await generalStep.addList('Prospect 2');
             await generalStep.clickOnButton('Remove');
             await generalStep.expectPopUpNotificationIs('Contacts removed from lists successfully');
             await generalStep.closePopUpNotification();
@@ -589,18 +577,22 @@ test.describe.serial("The user can add companies/contacts and assign to companie
 
         await test.step('Then the contacts are removed from the selected list', async () => {
             await generalStep.expectPageTitleIs("Default");
-            await contactsStep.expectItemAreNotInList('email', ["321.qwerty@sciplay.com"]);//the contact is not in the list 
+            await generalStep.clickOnMainMenuButton('Prospect', 'Lists');
+            await generalStep.expectPageTitleIs("Lists");
+            await prospectListsStep.clickOnTheList('Prospect 2');
+            await generalStep.expectPageTitleIs("Prospect 2");
+            await contactsStep.expectItemAreNotInList('email', [contactsTestData.preSetUpContacts[2]]);//the contact is not in the list 
             await generalStep.clickOnMainMenuButton('Prospect', 'Contacts');
             await generalStep.expectPageTitleIs("Contacts");
-            await contactsStep.expectItemsAreInList('email', ["321.qwerty@sciplay.com"]);//the contact is in the Contacts 
+            await contactsStep.expectItemsAreInList('email', [contactsTestData.preSetUpContacts[2]]);//the contact is in the Contacts 
         });
     });
 
-    test('When the user verifies the emails, the verified emails are shown', async ({ page }) => {
+    test('Scenario 1.12: When the user verifies the emails, the verified emails are shown', async ({ page }) => {
         //todo Now doesn't work
     });
 
-    test('When the user deletes the corresponding company from Companies page, the company is deleted', async ({ page }) => {
+    test('Scenario 1.13: When the user deletes the corresponding company from Companies page, the company is deleted', async ({ page }) => {
         const generalStep = new GeneralStep(page);
         const contactsStep = new ContactsStep(page);
 
@@ -628,7 +620,7 @@ test.describe.serial("The user can add companies/contacts and assign to companie
 
         await test.step('Then the company are not shown on Companies page', async () => {
             await generalStep.expectPageTitleIs("Companies");
-            await contactsStep.expectItemAreNotInList('company', [contactsTestData.companyNames[0]]);//contact is in the Companies 
+            await contactsStep.expectItemAreNotInList('company', [contactsTestData.companyNames[0]]);//contact with the Companies 
         });
 
         await test.step('When the user delete the company with contacts', async () => {
