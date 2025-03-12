@@ -4,7 +4,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "ts-node test.ts"
+    "test": "ts-node test.ts",
+    "build": "tsc",
+    "clean": "rm -rf dist"
   },
   "keywords": [],
   "author": "",
