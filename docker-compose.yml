@@ -1,0 +1,23 @@
+networks:
+  prospectai:
+    name: prospectai
+    external: true
+
+services:
+  tester:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    entrypoint: npx
+    environment:
+      TERM: "xterm-256color"
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+        bind:
+          create_host_path: true
+    ports:
+      - "127.0.0.1:${DOCKER_PLAYWRITE_EXPOSE_PORT}:8080"
+    networks:
+      - prospectai

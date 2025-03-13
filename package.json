@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "ts-node test.ts",
+    "test": "npx playwright test",
     "build": "tsc",
     "clean": "rm -rf dist"
   },
@@ -22,6 +22,7 @@
     "playwright": "^1.51.0"
   },
   "devDependencies": {
-    "@types/node": "^22.13.9"
+    "@types/node": "^22.13.9",
+    "ts-node": "^10.9.2"
   }
 }
